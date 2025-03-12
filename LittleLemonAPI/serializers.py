@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import MenuItem, Category, Order, OrderItem
+from .models import MenuItem, Category, Order, OrderItem, Cart
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -9,21 +9,29 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'slug', 'title']
 
 class MenuItemSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)
-    category_id = serializers.IntegerField(write_only=True)
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+
     class Meta:
         model = MenuItem
-        fields = ['id', 'title', 'price', 'featured', 'category', 'category_id']
-        extra_kwargs = {'title': {
-            'validators': [
-                UniqueValidator(
-                    queryset=MenuItem.objects.all()
-                )
-            ]
-        }
-    }
+        fields = ['id', 'title', 'price', 'featured', 'category']
+        
+class CartSerializer(serializers.ModelSerializer):
+    menuitem_id = serializers.IntegerField(write_only=True)
+    menuitem = MenuItemSerializer(read_only=True)
+    class Meta:
+        model = Cart
+        fields = ['id', 'menuitem', 'menuitem_id', 'quantity', 'unit_price', 'price']
+
         
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = ['order', 'menuitem', 'quantity', 'unit_price', 'price']
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    orderitem = OrderItemSerializer(many=True, read_only=True, source="order")
+
+    class Meta:
+        model = Order
+        fields = ["id", "user", "delivery_crew", "status", "date", "total", "orderitem"]
